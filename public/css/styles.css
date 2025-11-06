@@ -159,15 +159,29 @@ button:hover {
   line-height: 1.5;
 }
 /* ==== Icons ========== */
+.feature-card {
+  text-align: center;
+}
+
 .feature-card i {
+  font-size: 36px; /* increase icon size */
   margin-bottom: 10px;
   color: #43a047;
-  transition: transform 0.3s ease;
+  background-color: #fff; /* white background */
+  border-radius: 50%; /* makes it circular */
+  padding: 15px; /* space around icon inside circle */
+  display: inline-flex; /* centers icon inside circle */
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1); /* soft shadow */
 }
 
 .feature-card:hover i {
   transform: scale(1.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2); /* slightly deeper shadow on hover */
 }
+
 
 /* ====== Footer ====== */
 footer {

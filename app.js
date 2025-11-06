@@ -23,7 +23,7 @@ app.use(express.static(path.join(__dirname, "public")));
 app.get("/", async (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-
+//! ---------------------------------Routes----------------------------------------------------- 
 // ---- Analyze Route ----
 app.post("/analyze", upload.single("image"), async (req, res) => {
   try {
@@ -68,7 +68,7 @@ app.post("/analyze", upload.single("image"), async (req, res) => {
     ]);
 
     const response = await result.response;
-    console.log("✅ Gemini raw output:", JSON.stringify(response, null, 2));
+    // console.log("✅ Gemini raw output:", JSON.stringify(response, null, 2));
 
     let plantInfo = "";
     if (response && typeof response.text === "function") {
