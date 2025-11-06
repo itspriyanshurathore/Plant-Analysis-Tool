@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>PlantScan | Smart Plant Identifier</title>
+
+    <!-- CSS -->
+    <link rel="stylesheet" href="css/styles.css" />
+
+    <!-- Font Awesome -->
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css"
+    />
+
+    <!-- Favicons -->
+    <link rel="icon" type="plant" sizes="32*32" href="image/plant.png" />
+    <link rel="icon" type="plant" sizes="16*16" href="image/plant_1.png" />
+  </head>
+
+  <body>
+    <header>
+      <h1><i class="fa-solid fa-seedling"></i> PlantScan</h1>
+      <p>Instant plant identification using AI</p>
+    </header>
+
+    <main>
+      <!-- UPLOAD-SECTION -->
+      <section id="upload-section">
+        <h2>Upload Your Plant Image</h2>
+        <div id="upload-box">
+          <input type="file" id="fileInput" accept="image/*" hidden />
+          <label for="fileInput" id="upload-label"
+            ><i class="fa-solid fa-camera"></i> Click or Drag to Upload</label
+          >
+          <img id="preview" src="" alt="Preview" style="display: none" />
+        </div>
+        <button id="analyzeBtn">Analyze Plant</button>
+        <p id="loadingText" class="loading">Analyzing... Please wait 🌱</p>
+      </section>
+      <!-- DOWNLOAD-SECTION -->
+      <section id="resultSection" style="display: none">
+        <h2><i class="fa-solid fa-seedling"></i>Analysis Result</h2>
+        <div id="resultContent"></div>
+        <button id="downloadBtn">
+          ⬇<i class="fa-solid fa-file-pdf"></i> Download PDF
+        </button>
+      </section>
+
+      <!-- FEATURES SECTION -->
+      <section id="features">
+        <h2><i class="fa-solid fa-star"></i> Powerful Features of PlantScan</h2>
+        <div class="features-container">
+          <div class="feature-card">
+            <h3><i class="fa-solid fa-leaf"></i> Smart Plant Detection</h3>
+            <p>
+              Upload or drag an image to instantly identify plants using
+              advanced AI and image recognition models.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3><i class="fa-solid fa-book-open"></i> In-Depth Plant Info</h3>
+            <p>
+              Get the plant’s name, scientific classification, care needs, and
+              detailed growth conditions.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3><i class="fa-solid fa-cloud"></i> Weather Insights</h3>
+            <p>
+              Understand how temperature, humidity, and sunlight affect your
+              plant’s growth and survival.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3>
+              <i class="fa-solid fa-file-pdf"></i> Downloadable PDF Reports
+            </h3>
+            <p>
+              Export your plant analysis as a beautiful, shareable PDF report
+              complete with images and details.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3><i class="fa-solid fa-seedling"></i> Plant Care Suggestions</h3>
+            <p>
+              Get easy-to-follow care tips for watering, soil type, and sunlight
+              requirements based on your plant type.
+            </p>
+          </div>
+
+          <div class="feature-card">
+            <h3><i class="fa-solid fa-globe"></i> Global Plant Database</h3>
+            <p>
+              Powered by AI trained on thousands of plant species — from
+              tropical to desert flora.
+            </p>
+          </div>
+        </div>
+      </section>
+    </main>
+    <!-- FOOTER-SECTION -->
+    <footer>
+      <p>© 2025 PlantScan — Smart Plant Identifier by Priyanshu Rathore 🌱</p>
+    </footer>
+
+    <script src="js/scripts.js"></script>
+  </body>
+</html>
