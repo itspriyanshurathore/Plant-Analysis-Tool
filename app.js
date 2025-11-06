@@ -1,64 +1,50 @@
+require("dotenv").config();
 const express = require("express");
 const multer = require("multer");
 const PDFDocument = require("pdfkit");
-const fs = require("fs");
-const fsPromises = fs.promises;
-const path = require("path");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
-require("dotenv").config();
+const path = require("path");
+const fs = require("fs");
+const os = require("os");
+const cors = require("cors");
+const sharp = require("sharp"); 
 
 const app = express();
-const port = process.env.PORT || 5000;
 
-// Multer Config
-const upload = multer({ dest: "upload/" });
+// ✅ In-memory multer storage (no upload folders)
+const upload = multer({ storage: multer.memoryStorage() });
 app.use(express.json({ limit: "10mb" }));
-
-// Initialize Google Gemini AI
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-// Middleware
+app.use(cors());
 app.use(express.static(path.join(__dirname, "public")));
 
-// Home Page route
-app.get("/", async (req, res) => {
+// 🌍 Home Route
+app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
-//! ---------------------------------Routes----------------------------------------------------- 
-// ---- Analyze Route ----
+
+// 🧠 Initialize Google Gemini AI
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+
+// 🌿 Analyze Route
 app.post("/analyze", upload.single("image"), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ error: "No file uploaded" });
-    }
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
 
-    const imagePath = req.file.path;
-    const imageData = await fsPromises.readFile(imagePath, {
-      encoding: "base64",
-    });
+    const imageData = req.file.buffer.toString("base64");
 
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro" });
 
     const result = await model.generateContent([
       `You are an expert botanist and plant care assistant.
-
-  Analyze the uploaded plant image carefully and provide a natural, human-readable description of it.
-
-  Format the output in plain text (NO markdown, NO symbols like ### or **).
-
-  The output should follow this clear structure:
-
-  1. Plant Name: (Write the common name)
-  2. Scientific Name: (Write the scientific name in italics)
-  3. Description: Write 3–5 lines describing the plant’s appearance (leaves, color, size, and general traits).
-  4. Ideal Weather & Environment: Describe the type of climate or weather this plant thrives in (temperature, humidity, etc.).
-  5. Best Growing Conditions:
-     - Light: (Mention light requirements)
-     - Watering: (Mention watering frequency and style)
-     - Soil: (Mention the suitable soil type)
-     - Humidity: (Mention preferred humidity)
-  6. Summary: A short summary (2–3 lines) giving care tips and how this plant can be best maintained at home.
-
-  Make the response simple, elegant, and written like you’re explaining to a beginner plant lover.`,
+      Analyze the uploaded plant image carefully and provide a natural, human-readable description of it.
+      Format the output in plain text (NO markdown, NO symbols like ### or **).
+      The output should follow this clear structure:
+      1. Plant Name
+      2. Scientific Name
+      3. Description
+      4. Ideal Weather & Environment
+      5. Best Growing Conditions
+      6. Summary (short care tips)`,
       {
         inlineData: {
           mimeType: req.file.mimetype,
@@ -67,10 +53,9 @@ app.post("/analyze", upload.single("image"), async (req, res) => {
       },
     ]);
 
-    const response = await result.response;
-    // console.log("✅ Gemini raw output:", JSON.stringify(response, null, 2));
-
+    const response = result.response;
     let plantInfo = "";
+
     if (response && typeof response.text === "function") {
       plantInfo = response.text();
     } else if (response.candidates && response.candidates.length > 0) {
@@ -81,66 +66,70 @@ app.post("/analyze", upload.single("image"), async (req, res) => {
       plantInfo = "No analysis found.";
     }
 
-    await fsPromises.unlink(imagePath);
-
     res.json({
       success: true,
       results: plantInfo,
       image: `data:${req.file.mimetype};base64,${imageData}`,
     });
   } catch (error) {
-    console.error("❌ Error analyzing plant:", error);
-    res.status(500).json({ error: error.message });
+    console.error("❌ Analyze Error:", error);
+    res.status(500).json({ error: "Error analyzing plant image." });
   }
 });
 
-// ---- Download PDF Route ----
+// 📄 Download PDF Route (Sharp Fix + Cross-Platform)
 app.post("/download", async (req, res) => {
   try {
-    console.log("📥 Received PDF generation request");
     const { results, image } = req.body;
-
-    if (!results) {
-      return res.status(400).json({ error: "No analysis data provided" });
-    }
+    if (!results) return res.status(400).json({ error: "No analysis data provided" });
 
     const doc = new PDFDocument({ margin: 50 });
-    const filePath = path.join("output", `Plant_Report_${Date.now()}.pdf`);
+    const chunks = [];
 
-    // Ensure output folder exists
-    if (!fs.existsSync("output")) fs.mkdirSync("output");
+    // Collect PDF in memory
+    doc.on("data", (chunk) => chunks.push(chunk));
+    doc.on("end", () => {
+      const pdfBuffer = Buffer.concat(chunks);
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="Plant_Analysis_Report.pdf"'
+      );
+      res.send(pdfBuffer);
+    });
 
-    const writeStream = fs.createWriteStream(filePath);
-    doc.pipe(writeStream);
-
-    // --- 🖼️ Image at the top (centered)
+    // 🖼️ Add image safely (Sharp conversion fix)
     try {
-      if (image) {
-        let imageBuffer = null;
-        if (image.startsWith("data:image")) {
-          imageBuffer = Buffer.from(image.split(",")[1], "base64");
-        } else if (image.startsWith("http")) {
-          const imgRes = await fetch(image);
-          imageBuffer = Buffer.from(await imgRes.arrayBuffer());
-        }
+      if (image && image.startsWith("data:image")) {
+        const base64Data = image.replace(/^data:image\/\w+;base64,/, "");
+        let imgBuffer = Buffer.from(base64Data, "base64");
 
-        if (imageBuffer) {
-          const imgWidth = 350;
-          const imgHeight = 120;
-          const xPos = (doc.page.width - imgWidth) / 2;
+        // ✅ Convert to PNG using Sharp (handles any format)
+        imgBuffer = await sharp(imgBuffer).png().toBuffer();
 
-          doc.image(imageBuffer, xPos, 50, {
-            width: imgWidth,
-            height: imgHeight,
-          });
-          doc.moveDown(5); // add spacing after image
-        }
+        // ✅ Use system temporary folder
+        const tempDir = os.tmpdir();
+        const tempFile = path.join(tempDir, "temp-plant-image.png");
+
+        fs.writeFileSync(tempFile, imgBuffer);
+
+        const imgWidth = 350;
+        const imgHeight = 120;
+        const xPos = (doc.page.width - imgWidth) / 2;
+
+        doc.image(tempFile, xPos, 50, {
+          width: imgWidth,
+          height: imgHeight,
+        });
+
+        fs.unlinkSync(tempFile); // Clean up
+        doc.moveDown(5);
       }
-    } catch (err) {
-      console.log("⚠️ Image load error:", err.message);
+    } catch (imgErr) {
+      console.warn("⚠️ Image load error:", imgErr.message);
     }
 
-    // --- 🌿 Centered Heading
+    // 🌿 Add report heading
     doc
       .moveDown(8)
       .fontSize(26)
@@ -152,15 +141,13 @@ app.post("/download", async (req, res) => {
       })
       .moveDown(2);
 
-    // --- ✍️ Analysis Content Formatting
+    // ✍️ Add content
     const lines = results.split("\n").filter((line) => line.trim() !== "");
-
     for (const line of lines) {
       if (line.includes(":")) {
         const [heading, ...descParts] = line.split(":");
         const desc = descParts.join(":").trim();
 
-        // Heading (bold)
         doc
           .moveDown(0.5)
           .font("Helvetica-Bold")
@@ -168,11 +155,9 @@ app.post("/download", async (req, res) => {
           .fillColor("#1b4332")
           .text(`${heading.trim()}:`, { continued: false });
 
-        // Description (normal text)
         doc.font("Helvetica").fontSize(12).fillColor("#333").text(desc, {
           align: "justify",
           lineGap: 6,
-          paragraphGap: 10,
         });
       } else {
         doc
@@ -183,27 +168,18 @@ app.post("/download", async (req, res) => {
       }
     }
 
-    // ✅ Finalize PDF
     doc.end();
-
-    writeStream.on("finish", () => {
-      console.log("✅ PDF created:", filePath);
-      res.download(filePath, "Plant_Analysis_Report.pdf", (err) => {
-        if (!err) fs.unlinkSync(filePath);
-      });
-    });
-
-    writeStream.on("error", (err) => {
-      console.error("🛑 WriteStream error:", err);
-      res.status(500).json({ error: "File writing error" });
-    });
   } catch (err) {
     console.error("❌ PDF generation error:", err);
     res.status(500).json({ error: "Failed to generate PDF." });
   }
 });
 
-// ---- Start Server ----
-app.listen(port, () => {
-  console.log(`🌱 PlantScan running at http://localhost:${port}`);
-});
+// 🟢 Local Development Server
+if (process.env.NODE_ENV !== "production") {
+  const port = process.env.PORT || 5000;
+  app.listen(port, () => console.log(`🌱 Local server running on port ${port}`));
+}
+
+// ✅ Export for Vercel
+module.exports = app;
